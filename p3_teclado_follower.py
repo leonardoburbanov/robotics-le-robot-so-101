@@ -71,62 +71,69 @@ def dls_xyz(v_xyz: np.ndarray) -> np.ndarray:
     return q
 
 
-robot = SO101Follower(
-    SO101FollowerConfig(port=PORT, id=ROBOT_ID, disable_torque_on_disconnect=False)
-)
-robot.connect()
-obs = robot.get_observation()
-for name in JOINTS:
-    data.qpos[qadr[name]] = to_rad(name, float(obs[f"{name}.pos"]))
-mujoco.mj_forward(model, data)
-robot.send_action(action_dict())
+def drive(quit_on_escape: bool = False) -> None:
+    """Drive the follower from the keyboard. Escape returns only when quit_on_escape is set."""
+    robot = SO101Follower(
+        SO101FollowerConfig(port=PORT, id=ROBOT_ID, disable_torque_on_disconnect=False)
+    )
+    robot.connect()
+    obs = robot.get_observation()
+    for name in JOINTS:
+        data.qpos[qadr[name]] = to_rad(name, float(obs[f"{name}.pos"]))
+    mujoco.mj_forward(model, data)
+    robot.send_action(action_dict())
 
-pygame.init()
-screen = pygame.display.set_mode((420, 80))
-pygame.display.set_caption("clic aqui. SPACE + WASD, R/F, Q/E, O/L")
-font = pygame.font.SysFont("consolas", 18)
+    pygame.init()
+    screen = pygame.display.set_mode((520, 80))
+    pygame.display.set_caption("SPACE mueve. Escape termina" if quit_on_escape else "SPACE mueve")
+    font = pygame.font.SysFont("consolas", 18)
 
-try:
-    while True:
-        t0 = time.perf_counter()
-        pygame.event.pump()
-        k = pygame.key.get_pressed()
-        v = np.zeros(3)
-        if k[pygame.K_SPACE]:
-            tip = data.site_xpos[site]
-            origin = data.body("shoulder").xpos
-            forward = tip[:2] - origin[:2]
-            length = float(np.linalg.norm(forward))
-            if length < 1e-4:
-                forward = np.array([1.0, 0.0])
-            else:
-                forward = forward / length
-            lateral = np.array([-forward[1], forward[0]])
-            side = (k[pygame.K_d] - k[pygame.K_a]) * SPEED
-            reach = (k[pygame.K_r] - k[pygame.K_f]) * SPEED
-            v[0] = forward[0] * reach + lateral[0] * side
-            v[1] = forward[1] * reach + lateral[1] * side
-            v[2] = (k[pygame.K_w] - k[pygame.K_s]) * SPEED
-            roll = data.qpos[roll_q] + (k[pygame.K_e] - k[pygame.K_q]) * ROLL_SPEED * DT
-            data.qpos[roll_q] = np.clip(roll, *model.jnt_range[roll_j])
-            grip = data.qpos[grip_q] + (k[pygame.K_o] - k[pygame.K_l]) * GRIP_SPEED * DT
-            data.qpos[grip_q] = np.clip(grip, *model.jnt_range[grip_j])
-        data.qpos[arm_q] = dls_xyz(v)
-        if k[pygame.K_SPACE]:
-            flex = data.qpos[arm_q[3]] + (k[pygame.K_t] - k[pygame.K_g]) * FLEX_SPEED * DT
-            data.qpos[arm_q[3]] = np.clip(flex, -np.deg2rad(85.9), np.deg2rad(85.9))
-        mujoco.mj_forward(model, data)
-        robot.send_action(action_dict())
-        p = data.site_xpos[site]
-        screen.fill((0, 0, 0))
-        screen.blit(
-            font.render(f"pinza {p[0]:+.3f} {p[1]:+.3f} {p[2]:+.3f}", True, (220, 220, 220)),
-            (12, 28),
-        )
-        pygame.display.flip()
-        delay = DT - (time.perf_counter() - t0)
-        if delay > 0:
-            time.sleep(delay)
-finally:
-    robot.disconnect()
-    pygame.quit()
+    try:
+        while True:
+            t0 = time.perf_counter()
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT or (
+                    quit_on_escape and event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE
+                ):
+                    return
+            k = pygame.key.get_pressed()
+            v = np.zeros(3)
+            if k[pygame.K_SPACE]:
+                tip = data.site_xpos[site]
+                origin = data.body("shoulder").xpos
+                forward = tip[:2] - origin[:2]
+                length = float(np.linalg.norm(forward))
+                forward = np.array([1.0, 0.0]) if length < 1e-4 else forward / length
+                lateral = np.array([-forward[1], forward[0]])
+                side = (k[pygame.K_d] - k[pygame.K_a]) * SPEED
+                reach = (k[pygame.K_r] - k[pygame.K_f]) * SPEED
+                v[0] = forward[0] * reach + lateral[0] * side
+                v[1] = forward[1] * reach + lateral[1] * side
+                v[2] = (k[pygame.K_w] - k[pygame.K_s]) * SPEED
+                roll = data.qpos[roll_q] + (k[pygame.K_e] - k[pygame.K_q]) * ROLL_SPEED * DT
+                data.qpos[roll_q] = np.clip(roll, *model.jnt_range[roll_j])
+                grip = data.qpos[grip_q] + (k[pygame.K_o] - k[pygame.K_l]) * GRIP_SPEED * DT
+                data.qpos[grip_q] = np.clip(grip, *model.jnt_range[grip_j])
+            data.qpos[arm_q] = dls_xyz(v)
+            if k[pygame.K_SPACE]:
+                flex = data.qpos[arm_q[3]] + (k[pygame.K_t] - k[pygame.K_g]) * FLEX_SPEED * DT
+                data.qpos[arm_q[3]] = np.clip(flex, -np.deg2rad(85.9), np.deg2rad(85.9))
+            mujoco.mj_forward(model, data)
+            robot.send_action(action_dict())
+            p = data.site_xpos[site]
+            screen.fill((0, 0, 0))
+            screen.blit(
+                font.render(f"pinza {p[0]:+.3f} {p[1]:+.3f} {p[2]:+.3f}", True, (220, 220, 220)),
+                (12, 28),
+            )
+            pygame.display.flip()
+            delay = DT - (time.perf_counter() - t0)
+            if delay > 0:
+                time.sleep(delay)
+    finally:
+        robot.disconnect()
+        pygame.quit()
+
+
+if __name__ == "__main__":
+    drive()

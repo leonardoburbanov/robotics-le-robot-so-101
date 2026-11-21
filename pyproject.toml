@@ -6,8 +6,21 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "ipykernel>=7.4.0",
-    "lerobot[dataset,serial-motors]>=0.7.0",
+    "lerobot[dataset,serial-motors,smolvla]>=0.7.0",
+    "mediapipe>=1.2.3",
     "mujoco>=4.0.1",
     "pygame>=2.6.1",
     "pyserial>=3.5",
+    "torch==2.15.0",
+    "torchvision==0.29.2",
 ]
+
+# Windows PyPI ships the CPU wheel. The 3060 needs the CUDA 13.4 build.
+[[tool.uv.index]]
+name = "pytorch-cu134"
+url = "https://download.pytorch.org/whl/cu134"
+explicit = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu134" }
+torchvision = { index = "pytorch-cu134" }
