@@ -12,6 +12,9 @@ checkpoints/
 *.pth
 *.ckpt
 *.safetensors
+*.jpg
+*.jpeg
+*.task
 
 # Local environment
 .venv/
