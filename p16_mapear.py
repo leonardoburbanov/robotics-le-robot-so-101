@@ -52,17 +52,20 @@ def put(model: mujoco.MjModel, data: mujoco.MjData, nx: float, ny: float, yaw: f
     paper = data.geom("paper").xpos
     half = model.geom("paper").size
     z = paper[2] + half[2] + model.geom("marker").size[2]
+    # Overhead camera: image x grows with sim +X, image y grows down, sim +Y is up.
+    yaw = -yaw
     free = model.joint("marker_free").qposadr.item()
     data.qpos[free : free + 7] = [
         paper[0] + nx * half[0],
-        paper[1] + ny * half[1],
+        paper[1] - ny * half[1],
         z,
         np.cos(yaw / 2.0),
         0.0,
         0.0,
         np.sin(yaw / 2.0),
     ]
-    data.qvel[model.joint("marker_free").dofadr.item() :] = 0.0
+    dof = model.joint("marker_free").dofadr.item()
+    data.qvel[dof : dof + 6] = 0.0
     mujoco.mj_forward(model, data)
 
 
