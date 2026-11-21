@@ -1,0 +1,22 @@
+# Recorded datasets and run artifacts. Keep these off GitHub.
+data/
+outputs/
+datasets/
+wandb/
+checkpoints/
+*.parquet
+*.mp4
+*.avi
+*.mkv
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+
+# Local environment
+.venv/
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.env
+.env.*

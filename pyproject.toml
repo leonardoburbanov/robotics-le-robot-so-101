@@ -6,6 +6,8 @@ readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
     "ipykernel>=7.4.0",
+    "lerobot[dataset,serial-motors]>=0.7.0",
     "mujoco>=4.0.1",
     "pygame>=2.6.1",
+    "pyserial>=3.5",
 ]
